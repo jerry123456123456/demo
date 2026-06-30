@@ -24,6 +24,7 @@ double subtract(double a, double b);
 double multiply(double a, double b);
 double divide(double a, double b);
 long   modulo(long a, long b);
+double power(double base, double exp);  /* 新增：幂运算 */
 
 /* ── 浮点数比较宏 ────────────────────────────────────────────────────────────
    浮点数不能直接用 == 比较（精度问题，如 0.1+0.2 != 0.3）。
@@ -69,6 +70,15 @@ void test_modulo() {
     printf("[PASS] test_modulo\n");
 }
 
+void test_power() {
+    ASSERT_DOUBLE_EQ(power(2, 10),  1024);  /* 2 的 10 次方 = 1024 */
+    ASSERT_DOUBLE_EQ(power(2, 0),   1);     /* 任何数的 0 次方 = 1 */
+    ASSERT_DOUBLE_EQ(power(2, -1),  0.5);   /* 负指数：2^-1 = 0.5 */
+    ASSERT_DOUBLE_EQ(power(3, 3),   27);    /* 3 的 3 次方 = 27 */
+    ASSERT_DOUBLE_EQ(power(9, 0.5), 3);     /* 小数指数：9^0.5 = √9 = 3 */
+    printf("[PASS] test_power\n");
+}
+
 /* ── 测试入口 ────────────────────────────────────────────────────────────────
    依次调用所有测试函数。任意一个 assert 失败，程序会立刻崩溃并打印失败位置，
    不会继续跑后续测试（快速失败策略）。                                        */
@@ -79,6 +89,7 @@ int main(void) {
     test_multiply();
     test_divide();
     test_modulo();
+    test_power();
     printf("=== All Tests Passed ===\n");
     return 0;  /* 所有断言通过，程序正常退出，CI 读取到退出码 0 = 测试成功 */
 }
