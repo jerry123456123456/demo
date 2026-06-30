@@ -1,3 +1,4 @@
 calculator
 test_calculator
 *.o
+.DS_Store
