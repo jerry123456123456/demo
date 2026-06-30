@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: ["feature/*", "fix/*"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # 第一道：编译
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile
+        run: gcc -Wall -Wextra -std=c11 -lm calculator.c -o calculator
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator
+          path: calculator
+
+  # 第二道：单元测试
+  unit-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run unit tests
+        run: make test
+
+  # 第三道：静态安全扫描（SAST）
+  sast-scan:
+    needs: unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cppcheck
+        run: sudo apt-get install -y cppcheck
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=all \
+                   --error-exitcode=1 \
+                   --suppress=missingIncludeSystem \
+                   calculator.c
+
+  # 第四道：部署（仅 main 分支，且前三道全绿）
+  deploy:
+    needs: [build, unit-test, sast-scan]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: calculator
+      - name: Deploy
+        run: |
+          chmod +x ./calculator
+          echo "Deploying calculator to production..."
+          ./calculator 2 + 2

@@ -1,0 +1,23 @@
+#!/bin/bash
+# .githooks/pre-commit
+# 本地提交门禁：编译检查 + 单元测试 + 密钥扫描
+# 安装：make setup
+
+set -e
+
+echo ">>> [pre-commit] Step 1: Compiling..."
+gcc -Wall -Wextra -std=c11 -lm calculator.c -o /tmp/calc_check
+echo "    OK"
+
+echo ">>> [pre-commit] Step 2: Running unit tests..."
+make test --no-print-directory
+echo "    OK"
+
+echo ">>> [pre-commit] Step 3: Scanning for hardcoded secrets..."
+if grep -rn "password\s*=\|api_key\s*=\|secret\s*=" -- *.c 2>/dev/null; then
+    echo "    ERROR: hardcoded credential detected, commit blocked."
+    exit 1
+fi
+echo "    OK"
+
+echo ">>> [pre-commit] All checks passed. Proceeding with commit."
