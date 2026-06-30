@@ -1,0 +1,25 @@
+# AI 协作执行协议（总纲）
+
+## 项目背景
+这是一个 C 语言计算器项目，使用 GCC + Make 构建，GitHub Actions 做 CI。
+当前支持：加、减、乘、除、取模。
+
+## 技术栈
+- 语言：C11 标准
+- 编译器：GCC，参数 -Wall -Wextra -std=c11 -lm
+- 测试：自定义 assert 宏（test_calculator.c）
+- CI：GitHub Actions（.github/workflows/ci.yml）
+- 本地门禁：.githooks/pre-commit
+
+## 执行流程
+1. 识别当前场景（新增功能 / 重构 / Bug 修复）
+2. 加载对应规则：basic/ 必须全加载，workflow/ 按场景加载
+3. 读取 calculator.c 和 test_calculator.c 作为现有风格参考
+4. 执行强制行为，规避禁止行为
+5. 输出 diff 前自检：是否引入安全问题？是否符合项目约束？
+
+## 禁止项
+- 禁止在库函数/工具函数中调用 exit()，应返回错误码
+- 禁止硬编码任何凭证、密钥、路径
+- 禁止引入项目未使用的新依赖（标准库以外需先确认）
+- 禁止新增功能不写对应测试
