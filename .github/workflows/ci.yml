@@ -28,8 +28,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Compile
-        # 和本地 make 一样，编译失败（非 0 退出码）整个 job 立刻失败
-        run: gcc -Wall -Wextra -std=c11 -lm calculator.c -o calculator
+        # -lm 必须放在源文件之后，Linux ld 链接器要求库参数在最后
+        run: gcc -Wall -Wextra -std=c11 calculator.c -o calculator -lm
 
       # upload-artifact：把编译好的二进制文件保存为"构建产物"
       # 后续 job 可以直接下载，不用重新编译（节省时间、保证一致性）
