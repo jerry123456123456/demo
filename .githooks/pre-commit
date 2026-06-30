@@ -1,23 +1,46 @@
 #!/bin/bash
 # .githooks/pre-commit
-# 本地提交门禁：编译检查 + 单元测试 + 密钥扫描
-# 安装：make setup
+# ────────────────────────────────────────────────────────────────
+# 本地提交门禁：在 git commit 执行前自动触发，三关全过才允许提交。
+# 安装方法：make setup
+#
+# git hook 机制：
+#   .git/hooks/pre-commit 存在且可执行时，git commit 会先运行它。
+#   脚本退出码非 0 → commit 被拒绝；退出码 0 → commit 正常进行。
+# ────────────────────────────────────────────────────────────────
 
+# set -e：任意一条命令失败（退出码非 0），脚本立刻终止。
+# 这样三关中任何一关失败都会自动阻止 commit，不需要手动写每步的错误判断。
 set -e
 
+# ── 第一关：编译检查 ──────────────────────────────────────────────
+# 目的：确保代码语法正确，能通过编译（-Wall -Wextra 让警告也变成错误）
+# -o /tmp/calc_check：编译产物放到 /tmp，不污染项目目录
 echo ">>> [pre-commit] Step 1: Compiling..."
 gcc -Wall -Wextra -std=c11 -lm calculator.c -o /tmp/calc_check
 echo "    OK"
 
+# ── 第二关：单元测试 ──────────────────────────────────────────────
+# 目的：确保现有测试全部通过，新改动没有破坏已有功能（回归测试）
+# --no-print-directory：抑制 make 输出"Entering directory..."的噪音
 echo ">>> [pre-commit] Step 2: Running unit tests..."
 make test --no-print-directory
 echo "    OK"
 
+# ── 第三关：硬编码密钥扫描 ────────────────────────────────────────
+# 目的：防止把密码、API Key 等敏感信息意外提交进代码仓库
+# grep -rn：递归搜索（r）并显示行号（n）
+# \s*=：允许等号前有空格，匹配 password=、password = 等写法
+# 2>/dev/null：忽略 grep 本身的报错（如文件不存在）
+# if grep ... ; then：grep 找到匹配 → 退出码 0 → 进入 if 块 → 阻止提交
+#                     grep 没找到  → 退出码 1 → 跳过 if 块 → 继续提交
 echo ">>> [pre-commit] Step 3: Scanning for hardcoded secrets..."
 if grep -rn "password\s*=\|api_key\s*=\|secret\s*=" -- *.c 2>/dev/null; then
     echo "    ERROR: hardcoded credential detected, commit blocked."
-    exit 1
+    exit 1  # 非 0 退出码 → git 拒绝此次 commit
 fi
 echo "    OK"
 
+# ── 全部通过 ──────────────────────────────────────────────────────
+# 脚本执行到这里说明三关全过，exit 0（或不写，默认 0）→ git 允许 commit
 echo ">>> [pre-commit] All checks passed. Proceeding with commit."

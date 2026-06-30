@@ -1,61 +1,105 @@
-name: CI
+name: CI   # 流水线名称，显示在 GitHub Actions 页面
 
+# ── 触发条件 ──────────────────────────────────────────────────────
+# 什么时候自动运行这条流水线？
 on:
   push:
     branches: ["feature/*", "fix/*"]
+    # 向 feature/ 或 fix/ 开头的分支推代码时触发
+    # main/develop 分支直接 push 不会触发（要走 PR）
   pull_request:
     branches: [main, develop]
+    # 向 main 或 develop 分支发起 PR 时触发
+    # 这是最重要的触发点：PR 合入前必须 CI 全绿
 
+# ── 作业定义 ──────────────────────────────────────────────────────
+# jobs 下的每个条目是一个独立的"作业（job）"
+# 每个 job 在独立的虚拟机上运行，默认互相并行
+# 用 needs 声明依赖关系后，变为串行执行
 jobs:
-  # 第一道：编译
+
+  # ── 第一道：编译 ────────────────────────────────────────────────
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest   # 在 GitHub 提供的最新 Ubuntu 虚拟机上运行
+
     steps:
+      # checkout@v4：把当前 PR/分支的代码拉到虚拟机里
+      # 没有这一步，后续命令看不到任何源文件
       - uses: actions/checkout@v4
+
       - name: Compile
+        # 和本地 make 一样，编译失败（非 0 退出码）整个 job 立刻失败
         run: gcc -Wall -Wextra -std=c11 -lm calculator.c -o calculator
+
+      # upload-artifact：把编译好的二进制文件保存为"构建产物"
+      # 后续 job 可以直接下载，不用重新编译（节省时间、保证一致性）
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: calculator
-          path: calculator
+          name: calculator   # 产物名称
+          path: calculator   # 要上传的文件路径
 
-  # 第二道：单元测试
+  # ── 第二道：单元测试 ─────────────────────────────────────────────
   unit-test:
-    needs: build
+    needs: build             # 必须等 build job 成功后才启动
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Run unit tests
+        # make test 展开后是：
+        #   gcc -DUNIT_TEST calculator.c test_calculator.c -lm -o test_calculator
+        #   ./test_calculator
+        # 任意 assert 失败 → ./test_calculator 退出码非 0 → make 报错 → job 失败
         run: make test
 
-  # 第三道：静态安全扫描（SAST）
+  # ── 第三道：静态安全扫描（SAST） ──────────────────────────────────
   sast-scan:
-    needs: unit-test
+    needs: unit-test         # 测试通过后才做安全扫描，节省资源
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Install cppcheck
+        # cppcheck 是专为 C/C++ 设计的静态分析工具
+        # 不运行代码，只分析源码结构，找潜在 bug 和不安全写法
         run: sudo apt-get install -y cppcheck
+
       - name: Run cppcheck
         run: |
           cppcheck --enable=all \
                    --error-exitcode=1 \
                    --suppress=missingIncludeSystem \
                    calculator.c
+          # --enable=all          : 开启所有检查规则（内存泄漏、越界、风格等）
+          # --error-exitcode=1    : 发现问题时以退出码 1 退出，让 CI 标红
+          # --suppress=missingIncludeSystem : 忽略系统头文件缺失的警告
+          #                        （CI 环境不一定装了所有系统库）
 
-  # 第四道：部署（仅 main 分支，且前三道全绿）
+  # ── 第四道：部署 ──────────────────────────────────────────────────
   deploy:
+    # needs 列表：前三个 job 全部成功才会触发 deploy
     needs: [build, unit-test, sast-scan]
+
+    # if 条件：只在 main 分支上才执行部署
+    # 功能分支的 PR 只跑前三道检查，不触发部署
     if: github.ref == 'refs/heads/main'
+
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
+      # 下载 build job 上传的二进制产物，不用重新编译
       - uses: actions/download-artifact@v4
         with:
           name: calculator
+
       - name: Deploy
         run: |
-          chmod +x ./calculator
+          chmod +x ./calculator          # 赋予可执行权限（artifact 下载后默认无权限）
           echo "Deploying calculator to production..."
-          ./calculator 2 + 2
+          ./calculator 2 + 2             # 冒烟测试：部署后验证程序能正常运行
+          # 真实项目这里会是：scp、rsync、kubectl apply、docker push 等部署命令
