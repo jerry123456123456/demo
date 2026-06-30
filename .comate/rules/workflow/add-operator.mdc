@@ -1,0 +1,39 @@
+# 新增运算符流程规范（场景触发）
+
+## 适用场景
+向 calculator.c 新增运算符时加载此规范。
+
+## 执行步骤（必须按顺序）
+1. 在 calculator.c 中添加运算函数（放在现有函数之后，modulo 之前）
+2. 在 main() 的 switch 中添加对应 case
+3. 更新 main() 的 Usage 提示（fprintf stderr 那行）
+4. 在 test_calculator.c 中添加 test_<运算名>() 函数
+5. 在 test_calculator.c 的 main() 中调用新测试函数
+6. 运行 make test 确认全部通过
+
+## 函数签名规范
+- 整数运算：`long func_name(long a, long b)`
+- 浮点运算：`double func_name(double a, double b)`
+- 除数/模数为 0 时：打印错误到 stderr，调用 exit(EXIT_FAILURE)
+  （注意：这里在 main 调用链上，属于最外层，允许 exit）
+
+## 示例：新增取模运算的完整改动
+
+```c
+/* calculator.c 新增函数 */
+long modulo(long a, long b) {
+    if (b == 0) {
+        fprintf(stderr, "Error: modulo by zero\n");
+        exit(EXIT_FAILURE);
+    }
+    return a % b;
+}
+
+/* test_calculator.c 新增测试 */
+void test_modulo() {
+    assert(modulo(10, 3) ==  1);
+    assert(modulo(9,  3) ==  0);
+    assert(modulo(-7, 3) == -1);
+    printf("[PASS] test_modulo\n");
+}
+```

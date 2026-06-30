@@ -1,0 +1,45 @@
+# C 语言基础规范（必须执行）
+
+## 基础规范
+- 遵循 C11 标准，编译参数 -Wall -Wextra -std=c11 -lm
+- 所有函数必须有明确的返回类型，禁止隐式 int
+- 变量声明在作用域顶部（或 for 循环初始化处）
+
+## 强制行为
+- 所有系统调用/库函数的返回值必须检查（fopen、malloc、fread 等）
+- fopen 失败必须打印 strerror(errno) 并返回错误码
+- malloc 后必须检查是否为 NULL
+- 函数返回前必须释放本函数内分配的资源（fclose、free）
+- 浮点数比较使用 fabs(a-b) < EPSILON，禁止直接用 ==
+
+## 禁止行为
+- 禁止在工具函数/库函数中调用 exit()，只有 main() 可以终止进程
+- 禁止使用 strcpy/strcat/sprintf，改用 strncpy/strncat/snprintf
+- 禁止数组越界：循环上界使用 sizeof(arr)/sizeof(arr[0])，不硬编码数字
+- 禁止硬编码密码、密钥、绝对路径
+
+## 示例代码
+
+```c
+/* ✅ 正确：工具函数返回错误码 */
+int read_file(const char *path, char *buf, size_t size) {
+    FILE *fp = fopen(path, "r");
+    if (fp == NULL) {
+        fprintf(stderr, "cannot open %s: %s\n", path, strerror(errno));
+        return -1;
+    }
+    if (fgets(buf, (int)size, fp) == NULL) {
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    return 0;
+}
+
+/* ❌ 错误：工具函数里直接 exit */
+int read_file(const char *path, char *buf, size_t size) {
+    FILE *fp = fopen(path, "r");
+    if (!fp) exit(1);   /* 调用方没机会处理 */
+    return 0;
+}
+```

@@ -14,6 +14,8 @@
 #include <stdio.h>
 /* stdlib.h：提供 exit() / EXIT_FAILURE / EXIT_SUCCESS / atof() */
 #include <stdlib.h>
+/* math.h：提供 pow()（幂运算）；编译时需要 -lm 链接数学库 */
+#include <math.h>
 
 /* ── 基础运算函数 ─────────────────────────────────────────────────
    参数和返回值都用 double，支持小数运算。
@@ -45,6 +47,12 @@ long modulo(long a, long b) {
     return a % b;  /* C 语言的 % 是整数取余，结果符号与被除数 a 相同 */
 }
 
+/* 幂运算：base ^ exp，使用标准库 pow()，支持小数指数
+   注意：pow() 返回 double，负指数（如 2^-1 = 0.5）正常支持  */
+double power(double base, double exp) {
+    return pow(base, exp);
+}
+
 /* ── 条件编译：区分"主程序模式"和"单元测试模式" ─────────────────
    编译测试时加 -DUNIT_TEST 标志，main() 会被整个跳过，
    避免和 test_calculator.c 里的 main() 产生"重复定义"链接错误。
@@ -58,7 +66,7 @@ int main(int argc, char *argv[]) {
     if (argc != 4) {
         /* 参数数量不对，打印用法提示后退出 */
         fprintf(stderr, "Usage: %s <num1> <op> <num2>\n", argv[0]);
-        fprintf(stderr, "  op: + - * / %%\n");  /* %% 是 % 的转义写法 */
+        fprintf(stderr, "  op: + - * / %% ^\n");  /* %% 是 % 的转义写法，^ 是新增的幂运算符 */
         return EXIT_FAILURE;                     /* return 非 0 = 程序失败 */
     }
 
@@ -79,6 +87,10 @@ int main(int argc, char *argv[]) {
             /* modulo 参数是 long，需要把 double 强制转型为 long（截断小数）
                结果再转回 double 存入 result，方便统一用 printf 输出      */
             result = (double)modulo((long)a, (long)b);
+            break;
+        case '^':
+            /* 幂运算：直接调用 power()，支持小数和负数指数 */
+            result = power(a, b);
             break;
         default:
             fprintf(stderr, "Error: unknown operator '%c'\n", op);

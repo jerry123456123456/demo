@@ -1,0 +1,31 @@
+# 代码质量规范（必须执行）
+
+## 基础规范
+- 单个函数不超过 50 行，超出则拆分
+- 函数只做一件事，函数名能准确描述其行为
+- 命名规范：函数和变量用 snake_case（如 read_file、buf_size）
+
+## 强制行为
+- 新增功能必须在 test_calculator.c 中添加对应测试
+- 测试函数命名格式：test_<功能名>()
+- 每个测试函数末尾必须打印 [PASS] test_xxx
+- 浮点函数用 ASSERT_DOUBLE_EQ，整数函数用 assert
+
+## 禁止行为
+- 禁止提交未通过 make test 的代码
+- 禁止一个 commit 混入多个不相关的改动
+- 禁止 commit message 使用中文或模糊描述（如 "fix bug"、"update"）
+
+## Commit Message 格式
+```
+<type>(<scope>): <description>
+
+type: feat / fix / refactor / test / docs / chore
+scope: calc / test / ci / docs
+
+示例：
+  feat(calc): add power operator support
+  fix(calc): handle divide by zero correctly
+  test(calc): add edge cases for modulo operator
+  docs: add inline comments to all source files
+```
